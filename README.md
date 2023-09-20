@@ -4,7 +4,7 @@
 
 ![example](https://user-images.githubusercontent.com/26743903/88215863-f35d5f00-cc64-11ea-81db-e829e6e9b5c8.png)
 
-## [Live Demo](https://matematuk.github.io/gantt-task-react/)
+## [Live Demo](https://ruslanbely.github.io/gantt-task-react//)
 
 ## Install
 
@@ -84,13 +84,15 @@ npm start
 
 ### DisplayOption
 
-| Parameter Name | Type    | Description                                                                                                 |
-| :------------- | :------ | :---------------------------------------------------------------------------------------------------------- |
-| viewMode       | enum    | Specifies the time scale. Hour, Quarter Day, Half Day, Day, Week(ISO-8601, 1st day is Monday), Month, QuarterYear, Year. |
-| viewDate       | date    | Specifies display date and time for display.                                                                |
-| preStepsCount  | number  | Specifies empty space before the fist task                                                                  |
-| locale         | string  | Specifies the month name language. Able formats: ISO 639-2, Java Locale.                                    |
-| rtl            | boolean | Sets rtl mode.                                                                                              |
+| Parameter Name      | Type    | Description                                                                                                              |
+| :------------------ | :------ | :----------------------------------------------------------------------------------------------------------------------- |
+| viewMode            | enum    | Specifies the time scale. Hour, Quarter Day, Half Day, Day, Week(ISO-8601, 1st day is Monday), Month, QuarterYear, Year. |
+| viewDate            | date    | Specifies display date and time for display.                                                                             |
+| preStepsCount       | number  | Specifies empty space before the fist task                                                                               |
+| locale              | string  | Specifies the month name language. Able formats: ISO 639-2, Java Locale.                                                 |
+| monthCalendarFormat | string  | Specifies the month display on calendar                                                                                  |
+| monthTaskListFormat | string  | Specifies the month display on list.                                                                                     |
+| rtl                 | boolean | Sets rtl mode.                                                                                                           |
 
 ### StylingOption
 

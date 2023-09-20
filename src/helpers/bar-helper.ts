@@ -53,7 +53,10 @@ export const convertToBarTasks = (
       const dependence = barTasks.findIndex(
         value => value.id === dependencies[j]
       );
-      if (dependence !== -1) barTasks[dependence].barChildren.push(task);
+      if (dependence !== -1) {
+        barTasks[dependence].barChildren.push(task);
+        task.barDependencies.push(barTasks[dependence]);
+      }
     }
     return task;
   });
@@ -196,6 +199,7 @@ const convertToBar = (
     hideChildren,
     height: taskHeight,
     barChildren: [],
+    barDependencies: [],
     styles,
   };
 };
@@ -242,6 +246,7 @@ const convertToMilestone = (
     height: rotatedHeight,
     hideChildren: undefined,
     barChildren: [],
+    barDependencies: [],
     styles,
   };
 };
@@ -341,7 +346,14 @@ const startByX = (x: number, xStep: number, task: BarTask) => {
   }
   const steps = Math.round((x - task.x1) / xStep);
   const additionalXValue = steps * xStep;
-  const newX = task.x1 + additionalXValue;
+  let newX = task.x1 + additionalXValue;
+
+  /* Check dependencies for task - child task should be after parrent */
+  if (task.barDependencies.length && steps < 0) {
+    task.barDependencies.forEach(parentTask => {
+      if (parentTask.x2 > newX) newX = parentTask.x2
+    })
+  }
   return newX;
 };
 
@@ -358,7 +370,14 @@ const endByX = (x: number, xStep: number, task: BarTask) => {
 const moveByX = (x: number, xStep: number, task: BarTask) => {
   const steps = Math.round((x - task.x1) / xStep);
   const additionalXValue = steps * xStep;
-  const newX1 = task.x1 + additionalXValue;
+  let newX1 = task.x1 + additionalXValue;
+
+  /* Check dependencies for task - child task should be after parrent */
+  if (task.barDependencies.length && steps < 0) {
+    task.barDependencies.forEach(parentTask => {
+      if (parentTask.x2 > newX1) newX1 = parentTask.x2
+    })
+  }
   const newX2 = newX1 + task.x2 - task.x1;
   return [newX1, newX2];
 };
@@ -378,6 +397,80 @@ const dateByX = (
   return newDate;
 };
 
+const calculateProgressChangedTask = (changedTask: BarTask, rtl: boolean) => {
+  const [progressWidth, progressX] = progressWithByParams(
+    changedTask.x1,
+    changedTask.x2,
+    changedTask.progress,
+    rtl
+  );
+  changedTask.progressWidth = progressWidth;
+  changedTask.progressX = progressX;
+}
+
+export const changeChildrenBars = (originalSelectedTask: BarTask, newChangedTask: BarTask,
+  xStep: number, timeStep: number, changedDependedTasks: BarTask[], action: BarMoveAction) => {
+  if (action === 'move') {
+    newChangedTask.barChildren.forEach(t => {
+      const originalSubTask = { ...t }
+      t.start = dateByX(
+        t.x1 + newChangedTask.x1 - originalSelectedTask.x1,
+        t.x1,
+        t.start,
+        xStep,
+        timeStep
+      );
+
+      t.end = dateByX(
+        t.x2 + newChangedTask.x2 - originalSelectedTask.x2,
+        t.x2,
+        t.end,
+        xStep,
+        timeStep
+      );
+
+      t.x1 = t.x1 + newChangedTask.x1 - originalSelectedTask.x1
+      t.x2 = t.x2 + newChangedTask.x2 - originalSelectedTask.x2
+
+      calculateProgressChangedTask(t, false)
+
+      changedDependedTasks.push(t)
+      if (t.barChildren.length) changeChildrenBars(originalSubTask, t, xStep, timeStep,
+          changedDependedTasks, action)
+    })
+  }
+
+  if (action === 'end') {
+    newChangedTask.barChildren.forEach(t => {
+      const originalSubTask = { ...t }
+
+      t.start = dateByX(
+        t.x1 + newChangedTask.x2 - originalSelectedTask.x2,
+        t.x1,
+        t.start,
+        xStep,
+        timeStep
+      );
+
+      t.end = dateByX(
+        t.x2 + newChangedTask.x2 - originalSelectedTask.x2,
+        t.x2,
+        t.end,
+        xStep,
+        timeStep
+      );
+
+      t.x1 = t.x1 + newChangedTask.x2 - originalSelectedTask.x2
+      t.x2 = t.x2 + newChangedTask.x2 - originalSelectedTask.x2
+
+      calculateProgressChangedTask(t, false)
+
+      changedDependedTasks.push(t)
+      if (t.barChildren.length) changeChildrenBars(originalSubTask, t, xStep, timeStep,
+          changedDependedTasks, action)
+    })
+  }
+}
 /**
  * Method handles event in real time(mousemove) and on finish(mouseup)
  */
@@ -436,16 +529,7 @@ const handleTaskBySVGMouseEventForBar = (
         changedTask.progress = progressByX(svgX, selectedTask);
       }
       isChanged = changedTask.progress !== selectedTask.progress;
-      if (isChanged) {
-        const [progressWidth, progressX] = progressWithByParams(
-          changedTask.x1,
-          changedTask.x2,
-          changedTask.progress,
-          rtl
-        );
-        changedTask.progressWidth = progressWidth;
-        changedTask.progressX = progressX;
-      }
+      if (isChanged) calculateProgressChangedTask(changedTask, rtl)
       break;
     case "start": {
       const newX1 = startByX(svgX, xStep, selectedTask);
@@ -469,14 +553,7 @@ const handleTaskBySVGMouseEventForBar = (
             timeStep
           );
         }
-        const [progressWidth, progressX] = progressWithByParams(
-          changedTask.x1,
-          changedTask.x2,
-          changedTask.progress,
-          rtl
-        );
-        changedTask.progressWidth = progressWidth;
-        changedTask.progressX = progressX;
+        calculateProgressChangedTask(changedTask, rtl)
       }
       break;
     }
@@ -502,14 +579,7 @@ const handleTaskBySVGMouseEventForBar = (
             timeStep
           );
         }
-        const [progressWidth, progressX] = progressWithByParams(
-          changedTask.x1,
-          changedTask.x2,
-          changedTask.progress,
-          rtl
-        );
-        changedTask.progressWidth = progressWidth;
-        changedTask.progressX = progressX;
+        calculateProgressChangedTask(changedTask, rtl)
       }
       break;
     }
@@ -537,14 +607,7 @@ const handleTaskBySVGMouseEventForBar = (
         );
         changedTask.x1 = newMoveX1;
         changedTask.x2 = newMoveX2;
-        const [progressWidth, progressX] = progressWithByParams(
-          changedTask.x1,
-          changedTask.x2,
-          changedTask.progress,
-          rtl
-        );
-        changedTask.progressWidth = progressWidth;
-        changedTask.progressX = progressX;
+        calculateProgressChangedTask(changedTask, rtl)
       }
       break;
     }

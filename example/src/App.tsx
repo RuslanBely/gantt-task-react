@@ -18,9 +18,15 @@ const App = () => {
     columnWidth = 250;
   }
 
-  const handleTaskChange = (task: Task) => {
+  const handleTaskChange = (task: Task,  changedTasks: Task[] ) => {
     console.log("On date change Id:" + task.id);
-    let newTasks = tasks.map(t => (t.id === task.id ? task : t));
+
+    const changedTasksObject = [task,...changedTasks]
+          .reduce((acc, curr) =>(acc[curr['id']] = curr, acc), {});
+    let newTasks = tasks.map(t => {
+      return changedTasksObject[t.id] || t
+    });
+    
     if (task.project) {
       const [start, end] = getStartEndDateForProject(newTasks, task.project);
       const project = newTasks[newTasks.findIndex(t => t.id === task.project)];
